@@ -13,7 +13,8 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     phone = db.Column(db.String(20))
-
+    organisations = db.relationship('Organisation', secondary='organisation_users',
+                                    backref=db.backref('users', lazy='dynamic'))
     def set_password(self, pwd):
         self.password = generate_password_hash(pwd)
 
@@ -39,6 +40,10 @@ class Organisation(db.Model):
     orgId = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()), unique=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(255))
+
+    @staticmethod
+    def generate_name(firstName):
+        return f"{firstName}'s Organisation"
 
 
 class OrganisationUsers(db.Model):

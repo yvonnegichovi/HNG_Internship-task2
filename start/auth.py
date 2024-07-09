@@ -2,15 +2,9 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from start.models import User, Organisation, OrganisationUsers
-
 from start import db
 
 auth_bp = Blueprint('auth', __name__)
-
-@auth_bp.route('/index', methods=['GET'])
-def index():
-    return jsonify({'errors': 'Trying'})
-
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -40,10 +34,12 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
+    # Create organisation for the user
     new_org = Organisation(name=f"{data['firstName']}'s Organisation")
     db.session.add(new_org)
     db.session.commit()
 
+    # Associate user with organisation
     association = OrganisationUsers(user_id=new_user.userId, org_id=new_org.orgId)
     db.session.add(association)
     db.session.commit()
@@ -114,7 +110,7 @@ def get_user(id):
 def get_organisations():
     current_user = get_jwt_identity()
     user = User.query.filter_by(email=current_user).first()
-    organisations = user.organisations
+    organisations = Organisation.query.join(OrganisationUsers).filter_by(user_id=user.userId).all()
 
     orgs_data = [
         {
@@ -187,6 +183,10 @@ def add_user_to_organisation(org_id):
 
     if not user_to_add or not organisation or current_user not in [user.email for user in organisation.users]:
         return jsonify(status="Bad request", message="Client error", statusCode=400), 400
+
+    existing_association = OrganisationUsers.query.filter_by(user_id=user_to_add.userId, org_id=organisation.orgId).first()
+    if existing_association:
+        return jsonify(status="Bad request", message="User is already part of this organisation", statusCode=400), 400
 
     association = OrganisationUsers(user_id=user_to_add.userId, org_id=organisation.orgId)
     db.session.add(association)
