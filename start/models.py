@@ -1,5 +1,5 @@
 # models.py
-from app import db
+from start import db
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -13,7 +13,8 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(128), nullable=False)
     phone = db.Column(db.String(20))
-
+    organisations = db.relationship('Organisation', secondary='organisation_users',
+                                    backref=db.backref('users', lazy='dynamic'))
     def set_password(self, pwd):
         self.password = generate_password_hash(pwd)
 
@@ -30,15 +31,19 @@ class User(db.Model):
             errors.append({'field': 'email', 'message': 'Email is required'})
         if not self.password:
             errors.append({'field': 'password', 'message': 'Password is required'})
-        return jsonify(errors), 422
+        return errors
 
 
 class Organisation(db.Model):
     __tablename__ = 'organisations'
 
-    orgId = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    orgId = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()), unique=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(255))
+
+    @staticmethod
+    def generate_name(firstName):
+        return f"{firstName}'s Organisation"
 
 
 class OrganisationUsers(db.Model):
